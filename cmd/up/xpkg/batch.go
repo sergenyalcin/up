@@ -122,6 +122,8 @@ type batchCmd struct {
 	Create       bool     `help:"Create repository on push if it does not exist."`
 	BuildOnly    bool     `help:"Only build the smaller provider packages and do not attempt to push them to a package repository." default:"false"`
 
+	ProviderNameSuffixForPush string `help:"Suffix for provider name during pushing the packages. This suffix is added to the end of the provider name. If there is a service name for the corresponded provider, then the suffix will be added to the base provider name and the service-scoped name will be after this suffix.  Examples: provider-family-aws-suffix, provider-aws-suffix-s3" optional:"" env:"PROVIDER_NAME_SUFFIX_FOR_PUSH"`
+
 	// Common Upbound API configuration
 	Flags upbound.Flags `embed:""`
 }
@@ -335,7 +337,17 @@ func (c *batchCmd) getPackageRepo(s string) string {
 	return repo
 }
 
+func (c *batchCmd) getPackageRepoWithSuffix(s string) string {
+	if v, ok := c.PackageRepoOverride[s]; ok {
+		return fmt.Sprintf("%s-%s", v, c.ProviderNameSuffixForPush)
+	}
+	return fmt.Sprintf("%s-%s-%s", c.ProviderName, c.ProviderNameSuffixForPush, s)
+}
+
 func (c *batchCmd) getPackageURL(s string) string {
+	if c.ProviderNameSuffixForPush != "" {
+		return fmt.Sprintf(c.FamilyPackageURLFormat, c.getPackageRepoWithSuffix(s))
+	}
 	return fmt.Sprintf(c.FamilyPackageURLFormat, c.getPackageRepo(s))
 }
 
